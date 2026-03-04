@@ -1,0 +1,5 @@
+{
+  "name": "シナリオ解析エクセル出力ツール",
+  "description": "PDFや画像のシナリオを解析し、構造化されたデータとしてExcel形式で出力します。",
+  "requestFramePermissions": []
+}
