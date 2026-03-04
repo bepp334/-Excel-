@@ -122,21 +122,40 @@ export default function App() {
         cMapPacked: true,
       });
       const pdf = await loadingTask.promise;
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 4.0 });
-      
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('Could not get canvas context');
-      
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      
-      // Ensure canvas is transparent before rendering
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      
-      await page.render({ canvasContext: context, viewport } as any).promise;
-      return canvas.toDataURL('image/png');
+      const scale = 3.0;
+
+      // 全ページをレンダリングして縦に結合
+      const pageCanvases: HTMLCanvasElement[] = [];
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Could not get canvas context');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: context, viewport } as any).promise;
+        pageCanvases.push(canvas);
+      }
+
+      if (pageCanvases.length === 1) {
+        return pageCanvases[0].toDataURL('image/png');
+      }
+
+      // 複数ページを縦に結合
+      const totalWidth = Math.max(...pageCanvases.map(c => c.width));
+      const totalHeight = pageCanvases.reduce((sum, c) => sum + c.height, 0);
+      const merged = document.createElement('canvas');
+      merged.width = totalWidth;
+      merged.height = totalHeight;
+      const ctx = merged.getContext('2d')!;
+      let yOffset = 0;
+      for (const c of pageCanvases) {
+        ctx.drawImage(c, 0, yOffset);
+        yOffset += c.height;
+      }
+      return merged.toDataURL('image/png');
     } catch (err) {
       console.error('PDF conversion error details:', err);
       throw err;
@@ -259,6 +278,8 @@ export default function App() {
         【重要：抽出ルール】
         - テキストと画像が同じブロックにある場合は、必ず「オルトテキスト」と「画像」の2つの要素に分けて、順番通りにリストに追加してください。
         - 各ステップの境界ボックス（imageBox）は、余白や周囲の境界線（青い線など）を含めず、画像の内容（赤いカード部分など）のみを正確に、かつ端が切れないギリギリの範囲で抽出してください。
+        - imageBoxの座標は0〜1000の正規化座標です。画像全体の幅・高さをそれぞれ1000として計算してください。
+        - 座標の精度が特に重要です。実際に画像上の要素の上端・左端・下端・右端のピクセル位置を正確に計測し、1000スケールに変換してください。
         - 画像内の要素が横に並んでいる場合（例：複数の画像カードが水平に並んでいる）、それぞれのステップの ymin が近い値になるはずです。正確な座標を返してください。
 
         1. シナリオ名 (画像上部の Scenario: 以降のテキスト)
@@ -280,7 +301,7 @@ export default function App() {
       `;
 
       const response: GenerateContentResponse = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3-flash-preview",
         contents: {
           parts: [
             { text: prompt },
@@ -293,7 +314,8 @@ export default function App() {
           ]
         },
         config: {
-          systemInstruction: "あなたはプロのOCRエンジニアです。画像内のテキストを正確に抽出してください。特に絵文字は、画像にあるものと全く同じUnicode絵文字を特定して出力してください。似たような別の絵文字に置き換えることは厳禁です。一字一句、一記号、一絵文字たりとも勝手に変換しないでください。",
+          mediaResolution: "high" as any,
+          systemInstruction: "あなたはプロのOCRエンジニアです。画像内のテキストを正確に抽出してください。特に絵文字は、画像にあるものと全く同じUnicode絵文字を特定して出力してください。似たような別の絵文字に置き換えることは厳禁です。一字一句、一記号、一絵文字たりとも勝手に変換しないでください。また、imageBoxの座標は画像全体を1000×1000として計算した正規化座標を返してください。",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
