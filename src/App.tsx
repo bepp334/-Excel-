@@ -310,7 +310,7 @@ export default function App() {
           ]
         },
         config: {
-          mediaResolution: "high" as any,
+          mediaResolution: "media_resolution_high" as any,
           systemInstruction: "あなたはプロのOCRエンジニアです。画像内のテキストを正確に抽出してください。特に絵文字は、画像にあるものと全く同じUnicode絵文字を特定して出力してください。似たような別の絵文字に置き換えることは厳禁です。一字一句、一記号、一絵文字たりとも勝手に変換しないでください。また、imageBoxの座標は画像全体を1000×1000として計算した正規化座標を返してください。",
           responseMimeType: "application/json",
           responseSchema: {
