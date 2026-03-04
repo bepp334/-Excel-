@@ -108,10 +108,6 @@ export default function App() {
   const [currentImageForCrop, setCurrentImageForCrop] = useState<string | null>(null);
   const [customFileName, setCustomFileName] = useState<string>('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [apiKey, setApiKey] = useState<string>(() => {
-    // 環境変数があれば初期値として使用（ビルド時に注入される）
-    return import.meta.env.VITE_GEMINI_API_KEY ?? '';
-  });
 
   const convertPdfToImage = async (pdfFile: File): Promise<string> => {
     try {
@@ -244,9 +240,9 @@ export default function App() {
 
   const analyzeScenario = async (dataUrl: string, retryCount = 0): Promise<ScenarioData | null> => {
     try {
-      const effectiveApiKey = apiKey.trim() || import.meta.env.VITE_GEMINI_API_KEY;
+      const effectiveApiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!effectiveApiKey) {
-        throw new Error('Gemini APIキーが設定されていません。上部の入力欄にAPIキーを入力するか、.env.local に VITE_GEMINI_API_KEY を設定してください。');
+        throw new Error('APIキーが設定されていません。Vercelの環境変数に VITE_GEMINI_API_KEY を設定してください。');
       }
       const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
       const base64Data = dataUrl.split(',')[1];
@@ -859,24 +855,6 @@ export default function App() {
         </header>
 
         <div className="flex flex-col gap-8">
-          {/* API Key Section - AI Studio以外で使用する場合 */}
-          <section className="bg-white rounded-3xl p-8 shadow-sm border border-black/5">
-            <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-              <FileText className="w-6 h-6 text-emerald-500" />
-              Gemini APIキー
-            </h2>
-            <p className="text-sm text-gray-500 mb-4">
-              AI Studio以外で利用する場合は、<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">Google AI Studio</a>で取得したAPIキーを入力してください。.env.local に VITE_GEMINI_API_KEY を設定している場合は空欄でOKです。
-            </p>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="APIキーを入力（オプション）"
-              className="w-full px-5 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-            />
-          </section>
-
           {/* Top Section: Upload */}
           <section className="bg-white rounded-3xl p-8 shadow-sm border border-black/5">
             <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
